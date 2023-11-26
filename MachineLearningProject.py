@@ -3,8 +3,7 @@ import os
 import random
 import numpy as np
 from matplotlib import pyplot as plt
-import tensorflow.python.keras as keras
-
+import keras
 import tensorflow as tf
 import uuid
 
@@ -199,5 +198,48 @@ def train_loop(data, Epochs):
             checkpoint.save(file_prefix = checkpoint_prefix)
 
 
-Epochs = 50
+Epochs = 20
 train_loop (train_data,Epochs)
+
+#A batch of test data
+test_input, test_val, y_true = test_data.as_numpy_iterator().next()
+#Prediction
+y_expected = sia_model.predict([test_input, test_val])
+
+#postprocessing
+res = []
+for prediction in y_expected:
+    if prediction > 0.5:
+        res.append(1)
+    else:
+        res.append(0)
+print(res)
+#Creating recall metric
+metrec = tf.keras.metrics.Recall()
+#Calc recall value
+metrec.update_state(y_true,y_expected)
+#Return Recall Result
+print("rec", metrec.result().numpy())
+#precision metric
+metprecision = tf.keras.metrics.Precision()
+metprecision.update_state(y_true,y_expected)
+print("pre",metprecision.result().numpy())
+
+#visualizing results
+plt.figure(figsize=(10,8))
+plt.subplot(1,2,1)
+plt.imshow(test_input[0])
+plt.subplot(1,2,2)
+plt.imshow(test_val[0])
+plt.show()
+
+
+#Saving model
+sia_model.save("siamesemodel.h5")
+
+#Reload model
+model=tf.keras.models.load_model("siamesemodel.h5",custom_objects={"DistLayer":DistLayer,
+                                                                   "BinaryCrossentropy":tf.losses.BinaryCrossentropy})
+
+model.predict([test_input,test_val])
+model.summary()
