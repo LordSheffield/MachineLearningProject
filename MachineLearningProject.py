@@ -12,15 +12,15 @@ com_gpus = tf.config.experimental.list_physical_devices('GPU')
 for gpu in com_gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
-#Creation of Paths
-POS_PATH = os.path.join('data', 'positive') 
-NEG_PATH = os.path.join('data', 'negative') 
-ANC_PATH = os.path.join('data', 'anchor') 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
+#Photo directories
+POS_DIR = os.path.join('data', 'positive') 
+NEG_DIR = os.path.join('data', 'negative') 
+ANC_DIR = os.path.join('data', 'anchor') 
 
-'''
 #Webcam Collection
-cap = cv2.VideoCapture(0)
+'''cap = cv2.VideoCapture(0)
 while cap.isOpened():
     ret, frame = cap.read()
 
@@ -30,13 +30,13 @@ while cap.isOpened():
     #Anchor Collection
     #image captured or passed to the program
     if cv2.waitKey(1) & 0XFF == ord('a'):
-        picname = os.path.join(ANC_PATH, '{}.jpg'.format(uuid.uuid1()))
+        picname = os.path.join(ANC_DIR, '{}.jpg'.format(uuid.uuid1()))
         cv2.imwrite(picname, frame)
 
     #Positive Collection
     #image that the anchor should be and compare against it to verify the anchor.
     if cv2.waitKey(1) & 0XFF == ord('p'):
-        picname = os.path.join(POS_PATH, '{}.jpg'.format(uuid.uuid1()))
+        picname = os.path.join(POS_DIR, '{}.jpg'.format(uuid.uuid1()))
         cv2.imwrite(picname, frame)
 
     cv2.imshow('Images Capture', frame)
@@ -46,19 +46,16 @@ while cap.isOpened():
         break
 
 cap.release()
-cv2.destroyAllWindows()
-'''
+cv2.destroyAllWindows()'''
 
-anchor = tf.data.Dataset.list_files(ANC_PATH+'\*.jpg').take(300)
-positive = tf.data.Dataset.list_files(POS_PATH+'\*.jpg').take(300)
-negative = tf.data.Dataset.list_files(NEG_PATH+'\*.jpg').take(300)
+anchor = tf.data.Dataset.list_files(ANC_DIR+'\*.jpg').take(300)
+positive = tf.data.Dataset.list_files(POS_DIR+'\*.jpg').take(300)
+negative = tf.data.Dataset.list_files(NEG_DIR+'\*.jpg').take(300)
 
+#Prerocessing the image
 def preprocess(file_path):
-    #Reading the Image
     byte_pic = tf.io.read_file(file_path)
-    #Loading image
     pic = tf.io.decode_jpeg(byte_pic)
-    #Prerocessing the image
     pic = tf.image.resize(pic, (100, 100))
     pic = pic / 255.0
     return pic
@@ -160,8 +157,6 @@ checkpoint = tf.train.Checkpoint(opt=optimizer, sia_model=sia_model)
 test_batch = train_data.as_numpy_iterator()
 batch1 = test_batch.next()
 
-
-
 @tf.function
 def trainstep(batch):
     #recording operations
@@ -238,8 +233,7 @@ plt.show()
 sia_model.save("siamesemodel.h5")
 
 #Reload model
-model=tf.keras.models.load_model("siamesemodel.h5",custom_objects={"DistLayer":DistLayer,
-                                                                   "BinaryCrossentropy":tf.losses.BinaryCrossentropy})
+model=tf.keras.models.load_model("siamesemodel.h5", custom_objects={"DistLayer":DistLayer, "BinaryCrossentropy":tf.losses.BinaryCrossentropy})
 
 model.predict([test_input,test_val])
 model.summary()
